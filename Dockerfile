@@ -1,14 +1,22 @@
-# Базовый образ с Java 21 из проекта Eclipse Temurin под Ubuntu Jammy
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /workspace
 
-# Установка рабочей директории
+COPY gradle/ gradle/
+COPY gradlew .
+COPY build.gradle settings.gradle ./
+
+RUN ["chmod", "+x", "./gradlew"]
+
+RUN ./gradlew --no-daemon --refresh-dependencies
+
+COPY . .
+RUN ./gradlew bootJar -x test --no-daemon
+
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# Копирование fat-jar из папки билда в рабочую директорию внутри контейнера
-COPY build/libs/demo-app-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/build/libs/*.jar app.jar
 
-# Порт для взаимодействия с приложением
 EXPOSE 8080
 
-# Запуск приложения в контейнере
-CMD ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
