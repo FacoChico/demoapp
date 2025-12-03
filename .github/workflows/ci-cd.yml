@@ -6,14 +6,13 @@ on:
   pull_request:
     branches: [ master ]
 
-# Build & Test matrix
 jobs:
   build-and-test:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]  # macos-14 покрывает Apple Silicon / Intel в GH-hosted
+        os: [ubuntu-latest, windows-latest, macos-14]  # linux/windows/macos
         java-version: ['21']
     steps:
       - name: Checkout
@@ -41,6 +40,15 @@ jobs:
 
       - name: Build & test (Gradle)
         run: ./gradlew clean test --no-daemon
+
+      - name: Upload test results (JUnit XMLs and HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ matrix.os }}
+          path: |
+            build/test-results
+            build/reports/tests
 
   package:
     name: Package (build jar)
@@ -80,7 +88,6 @@ jobs:
         with:
           name: app-jar
 
-      # Option A: Trigger Render by calling Deploy Hook (recommended simple way)
       - name: Trigger Render deploy via Deploy Hook
         env:
           RENDER_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK }}
